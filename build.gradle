@@ -1,0 +1,66 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	maven {
+		name = 'Fabric'
+		url = 'https://maven.fabricmc.net/'
+	}
+	maven {
+		name = 'Xander Maven'
+		url = 'https://maven.isxander.dev/releases'
+	}
+	maven {
+		name = 'TerraformersMC'
+		url = 'https://maven.terraformersmc.com/'
+	}
+	mavenCentral()
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	// Optional integrations, referenced through separate entrypoint classes.
+	compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	compileOnly "dev.isxander:yet-another-config-lib:${project.yacl_version}"
+
+	// Only present when running through Gradle so the config screen can be tested.
+	localRuntime "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	localRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
+	localRuntime "dev.isxander:yet-another-config-lib:${project.yacl_version}"
+}
+
+processResources {
+	final def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+	withSourcesJar()
+}
+
+jar {
+	final def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_${projectName}" }
+	}
+}
