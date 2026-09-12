@@ -2,3 +2,6 @@
 build/
 run/
 *.log
+
+# IDE compiled output, not part of the source tree
+/bin/
