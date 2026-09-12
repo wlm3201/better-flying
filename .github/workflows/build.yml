@@ -1,0 +1,52 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # build.gradle targets Java 25, so the toolchain must match.
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # The wrapper is committed from Windows and may lack the executable bit.
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew build --stacktrace
+
+      - name: Read version
+        id: version
+        run: echo "value=$(sed -n 's/^version=//p' gradle.properties)" >> "$GITHUB_OUTPUT"
+
+      # The -dev and -sources-dev jars are development only, players need the remapped jar.
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: better-flying-${{ steps.version.outputs.value }}
+          path: |
+            build/libs/*.jar
+            !build/libs/*-dev.jar
+          if-no-files-found: error
