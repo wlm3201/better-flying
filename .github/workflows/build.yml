@@ -21,7 +21,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # build.gradle targets Java 25, so the toolchain must match.
+      # gradle/mod.gradle 用 Java 25 编译，构建机必须提供同版本 JDK
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -31,18 +31,17 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # The wrapper is committed from Windows and may lack the executable bit.
+      # 包装脚本是在 Windows 上提交的，可能没有可执行位
       - name: Build
         run: |
           chmod +x gradlew
           ./gradlew build --stacktrace
 
-      # 根项目聚合了所有 Minecraft 版本，build/libs 下会有 26.1 / 26.2 / 26.3 三份产物。
       - name: Read version
         id: version
-        run: echo "value=$(sed -n 's/^mod_version=//p' gradle.properties)" >> "$GITHUB_OUTPUT"
+        run: echo "value=$(sed -n 's/^version=//p' gradle.properties)" >> "$GITHUB_OUTPUT"
 
-      # The -dev and -sources-dev jars are development only, players need the remapped jar.
+      # 根项目收集了所有 MC 版本的产物；-dev / -sources 是开发用的中间产物
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -50,4 +49,5 @@ jobs:
           path: |
             build/libs/*.jar
             !build/libs/*-dev.jar
+            !build/libs/*-sources*.jar
           if-no-files-found: error

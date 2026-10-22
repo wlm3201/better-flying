@@ -3,34 +3,33 @@
 	"id": "betterflying",
 	"version": "${version}",
 	"name": "Better Flying",
-	"description": "Improvements for creative flight: toggle flight keybind, optional double tap jump to fly, flight inertia and speed multipliers, and flying on ground.\nPorted from Better Controls by chylex.",
+	"description": "Creative and spectator flight improvements: a toggle keybind, optional double-tap-jump to fly, flight inertia, and per-axis speed multipliers.",
 	"authors": [
 		"chylex (original Better Controls)",
-		"ported to Minecraft ${minecraft_version}"
+		"wlm3201 (porter)"
 	],
+	"contact": {
+		"sources": "https://github.com/wlm3201/better-flying"
+	},
 	"license": "MPL-2.0",
 	"icon": "assets/betterflying/icon.png",
 	"environment": "client",
 	"entrypoints": {
-		"client": [
-			"com.betterflying.BetterFlying"
-		],
-		"modmenu": [
-			"com.betterflying.compat.modmenu.ModMenuIntegration"
-		]
+		"client": ["com.betterflying.client.BetterFlying"],
+		"modmenu": ["com.betterflying.client.compat.modmenu.ModMenuIntegration"]
 	},
 	"mixins": [
 		{
-			"config": "betterflying.mixins.json",
+			"config": "betterflying.client.mixins.json",
 			"environment": "client"
 		}
 	],
 	"depends": {
-		"fabricloader": ">=0.19.0",
+		"fabricloader": ">=0.19.5",
 		"java": ">=25",
-		"minecraft": "${minecraft_range}"
+		"minecraft": "${minecraft_dependency}"
 	},
-	"recommends": {
+	"suggests": {
 		"modmenu": "*",
 		"yet_another_config_lib_v3": "*"
 	}

@@ -11,13 +11,8 @@ pluginManagement {
 
 rootProject.name = 'better-flying'
 
-// 每个 Minecraft 版本一个子项目，源码放在 versions/<版本>/src 下。
-// 构建单个版本：.\gradlew :26.3:build
-// 构建全部版本：.\gradlew build
-include ':26.1'
-include ':26.2'
-include ':26.3'
-
-project(':26.1').projectDir = file('versions/26.1')
-project(':26.2').projectDir = file('versions/26.2')
-project(':26.3').projectDir = file('versions/26.3')
+new File(settingsDir, 'versions').eachDir { dir ->
+	def projectName = ':v' + dir.name.replace('.', '_').replace('-', '_')
+	include projectName
+	project(projectName).projectDir = dir
+}

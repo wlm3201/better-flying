@@ -1,156 +1,69 @@
+
 plugins {
+	id 'base'
 	id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
-}
-
-// 根项目只做聚合：公共构建逻辑写在下面的 subprojects 里，
-// 每个 Minecraft 版本只有自己的依赖版本与差异源码（versions/<版本>/）。
-allprojects {
-	group = rootProject.group
-}
-
-// shared 里的某个文件如果在版本目录里有同名副本，就排除掉 shared 的那份（由版本目录的覆盖）。
-static boolean isOverridden(FileTreeElement element, File sharedDir, File versionDir) {
-	File file = element.file
-
-	if (file.directory || !file.path.startsWith(sharedDir.path)) {
-		return false
-	}
-
-	String relative = sharedDir.toPath().relativize(file.toPath()).toString()
-	return new File(versionDir, relative).exists()
+	id 'com.diffplug.spotless' version "${spotless_version}"
 }
 
 subprojects {
-	apply plugin: 'java'
-	apply plugin: 'net.fabricmc.fabric-loom'
+	apply from: rootProject.file('gradle/mod.gradle')
+}
 
-	// 例如 1.0.0+mc26.1
-	version = "${rootProject.mod_version}+mc${project.minecraft_series}"
+repositories {
+	mavenCentral()
+}
 
-	base {
-		archivesName = rootProject.archives_base_name
-	}
-
-	repositories {
-		maven {
-			name = 'Fabric'
-			url = 'https://maven.fabricmc.net/'
-		}
-		maven {
-			name = 'Xander Maven'
-			url = 'https://maven.isxander.dev/releases'
-		}
-		maven {
-			name = 'TerraformersMC'
-			url = 'https://maven.terraformersmc.com/'
-		}
-		mavenCentral()
-	}
-
-	dependencies {
-		minecraft "com.mojang:minecraft:${project.minecraft_version}"
-		implementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
-
-		// Optional integrations, referenced through separate entrypoint classes.
-		compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
-		compileOnly "dev.isxander:yet-another-config-lib:${project.yacl_version}"
-
-		// 26.2 起 Fabric API 会把 EntityLoadData 等接口注入到 Entity 上，开发环境的 Minecraft 因此
-		// 引用了 Fabric API 的类，编译期必须能看到它们（只影响开发环境，运行时仍不需要 Fabric API）。
-		compileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-		// Only present when running through Gradle so the config screen can be tested.
-		localRuntime "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-		localRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
-		localRuntime "dev.isxander:yet-another-config-lib:${project.yacl_version}"
-	}
-
-	// 共享源码：versions/<版本>/src/main/... 下放同名同路径的文件即可覆盖 shared 里的版本。
-	final File sharedJavaDir = rootProject.file('src/main/java')
-	final File sharedResourcesDir = rootProject.file('src/main/resources')
-	final File versionJavaDir = project.file('src/main/java')
-	final File versionResourcesDir = project.file('src/main/resources')
-
-	sourceSets.main {
-		java.srcDir sharedJavaDir
-		resources.srcDir sharedResourcesDir
-	}
-
-	// 上面的 srcDir 会把 shared 里的文件也加进来，这里再把被版本目录覆盖掉的同名文件排除，
-	// 否则同一个类会有两份源文件，javac 会报 duplicate class。只排除文件，目录要保留。
-	sourceSets.main.java.exclude { FileTreeElement element ->
-		isOverridden(element, sharedJavaDir, versionJavaDir)
-	}
-
-	sourceSets.main.resources.exclude { FileTreeElement element ->
-		isOverridden(element, sharedResourcesDir, versionResourcesDir)
-	}
-
-	processResources {
-		final def modVersion = project.version
-		final def minecraftVersion = project.minecraft_version
-		final def minecraftRange = "~${project.minecraft_series}"
-
-		inputs.property "version", modVersion
-		inputs.property "minecraft_version", minecraftVersion
-		inputs.property "minecraft_range", minecraftRange
-
-		filesMatching("fabric.mod.json") {
-			expand "version": modVersion,
-				"minecraft_version": minecraftVersion,
-				"minecraft_range": minecraftRange
-		}
-	}
-
-	tasks.withType(JavaCompile).configureEach {
-		it.options.release = 25
-		it.options.encoding = 'UTF-8'
-	}
-
+spotless {
 	java {
-		sourceCompatibility = JavaVersion.VERSION_25
-		targetCompatibility = JavaVersion.VERSION_25
-		withSourcesJar()
-	}
-
-	jar {
-		final def projectName = project.name
-		inputs.property "projectName", projectName
-
-		from(rootProject.file("LICENSE")) {
-			rename { "${it}_${projectName}" }
-		}
+		target 'src/**/*.java', 'versions/*/src/**/*.java'
+		googleJavaFormat().aosp()
+		trimTrailingWhitespace()
+		endWithNewline()
 	}
 }
 
-// 一次构建全部版本，并把所有产物汇总到根目录的 build/libs。
-tasks.register('collectJars', Copy) {
+def versionProjects = subprojects as List
+
+tasks.register('collectJars', Sync) {
 	group = 'build'
-	description = '把所有 Minecraft 版本的构建产物复制到 build/libs'
-
-	dependsOn subprojects.collect { "${it.path}:build" }
-
-	subprojects.each { p ->
-		from(p.layout.buildDirectory.dir('libs')) {
-			include '*.jar'
-			// -dev / -sources-dev 是未重映射的中间产物，玩家只需要正式 jar。
-			exclude '*-dev.jar'
-			exclude '*-sources-dev.jar'
-		}
-	}
+	description = 'Collects the mod jar of every supported Minecraft version into build/libs.'
 
 	into rootProject.layout.buildDirectory.dir('libs')
+
+	versionProjects.each { p ->
+		dependsOn p.tasks.named('build')
+		from(p.layout.buildDirectory.dir('libs')) {
+			include "${p.base.archivesName.get()}-*.jar"
+			exclude '*-dev.jar'
+			exclude '*-sources*.jar'
+		}
+	}
+
+	outputs.upToDateWhen { false }
 }
 
-tasks.register('build') {
+tasks.named('assemble') { dependsOn tasks.named('collectJars') }
+
+tasks.register('buildAll') {
 	group = 'build'
-	description = '一次构建全部 Minecraft 版本'
+	description = 'Builds the mod jar for every supported Minecraft version.'
 	dependsOn tasks.named('collectJars')
 }
 
-// 快捷方式：默认运行最新版本的客户端，其他版本用 :26.1:runClient / :26.2:runClient。
+def versionKey = { String version ->
+	def parts = version.tokenize('.').collect { it as int }
+	while (parts.size() < 3) {
+		parts << 0
+	}
+	parts[0] * 1000000L + parts[1] * 1000L + parts[2]
+}
+
+def latestVersionProject = versionProjects.max { a, b ->
+	versionKey(a.property('minecraft_version') as String) <=> versionKey(b.property('minecraft_version') as String)
+}
+
 tasks.register('runClient') {
 	group = 'fabric'
-	description = '运行最新版本（26.3）的客户端'
-	dependsOn ':26.3:runClient'
+	description = "Runs the development client of the newest supported version (${latestVersionProject.property('minecraft_version')})."
+	dependsOn "${latestVersionProject.path}:runClient"
 }

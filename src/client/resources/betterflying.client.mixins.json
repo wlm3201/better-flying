@@ -1,0 +1,16 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "com.betterflying.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"AccessPlayerFields",
+		"HookClientPlayerTick",
+		"HookClientPlayerVerticalFlightSpeed",
+		"HookLoadGameOptions",
+		"HookPlayerHorizontalFlightSpeed"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

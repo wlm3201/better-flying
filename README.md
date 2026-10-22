@@ -1,4 +1,6 @@
-# Better Flying（飞行增强）
+# Better Flying · 飞行增强
+
+[English](README.en.md) | 简体中文
 
 一个 Minecraft Fabric 客户端模组，为创造模式与旁观模式的飞行功能提供一系列增强：包括飞行切换键、关闭双击跳跃飞行、飞行惯性调节、水平/垂直飞行速度、Ctrl加速倍率等。
 
@@ -38,24 +40,3 @@
 | 水平速度 - 疾跑 | `2.0`  | 0 – 8 |
 | 垂直速度 - 默认 | `1.0`  | 0 – 8 |
 | 垂直速度 - 疾跑 | `2.0`  | 0 – 8 |
-
-## 构建
-
-一次构建全部 Minecraft 版本，并把产物汇总到根目录：
-
-```powershell
-.\gradlew build
-```
-
-开发时运行：
-
-```powershell
-.\gradlew runClient       # 等同于 :26.3:runClient
-
-```
-
-`runClient` 会自动把 Fabric API、Mod Menu、YACL 加入本地运行环境。
-
-## 许可证
-
-[MPL-2.0](LICENSE)。
